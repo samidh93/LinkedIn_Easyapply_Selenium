@@ -5,9 +5,14 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException, ElementClickInterceptedException, NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support.ui import Select
 import time
 import re
 import json
+import requests
+import urllib
+from bs4 import BeautifulSoup
+import urllib.request
 
 class EasyApplyLinkedin:
 
@@ -18,7 +23,9 @@ class EasyApplyLinkedin:
         self.password = data['password']
         self.keywords = data['keywords']
         self.location = data['location']
-        self.driver = webdriver.Chrome(data['driver_path'])
+        options = webdriver.ChromeOptions()
+        options.add_argument("start-maximized")
+        self.driver = webdriver.Chrome(options=options, executable_path=data['driver_path'])
 
     def login_linkedin(self):
         """This function logs into your personal LinkedIn profile"""
@@ -37,6 +44,7 @@ class EasyApplyLinkedin:
         time.sleep(1)
         speicher = self.driver.find_element_by_xpath('//*[@id="remember-me-prompt__form-primary"]/button')
         speicher.click()
+        time.sleep(5)
 
     def job_search(self):
         """This function goes to the 'Jobs' section a looks for all the jobs that matches the keywords and location"""
@@ -52,12 +60,12 @@ class EasyApplyLinkedin:
         #search_location.clear()
         search_location.send_keys(self.location)
         search_location.send_keys(Keys.RETURN)
-        time.sleep(2)
+        time.sleep(5)
 
     def filter(self):
         """This function filters all the job results by 'Easy Apply'"""
         # select all filters, click on Easy Apply and apply the filter
-        easy_apply_button = self.driver.find_element_by_xpath("//button[@aria-label='Apply on LinkedIn filter.']")
+        easy_apply_button = self.driver.find_element_by_xpath("//button[@aria-label='Easy Apply filter.']")
         easy_apply_button.click()
 
     def find_offers(self):
@@ -68,22 +76,22 @@ class EasyApplyLinkedin:
         total_results_int = int(total_results.text.split(' ',1)[0].replace(",",""))
         print(total_results_int)
 
-        time.sleep(2)
+        time.sleep(5)
         # get results for the first page
         current_page = self.driver.current_url
-        results = self.driver.find_elements_by_class_name("")
+        results = self.driver.find_elements_by_class_name("jobs-search-results__list-item.occludable-update.p0.relative.ember-view")
 
         # for each job add, submits application if no questions asked
         for result in results:
             hover = ActionChains(self.driver).move_to_element(result)
             hover.perform()
-            titles = result.find_elements_by_class_name('job-card-search__title.artdeco-entity-lockup__title.ember-view')
+            titles = result.find_elements_by_class_name('full-width.artdeco-entity-lockup__title.ember-view')
             for title in titles:
                 self.submit_apply(title)
 
         # if there is more than one page, find the pages and apply to the results of each page
         if total_results_int < 24:
-            time.sleep(2)
+            time.sleep(5)
 
             # find the last page and construct url of each page based on the total amount of pages
             find_pages = self.driver.find_elements_by_class_name("artdeco-pagination__indicator.artdeco-pagination__indicator--number")
@@ -91,14 +99,14 @@ class EasyApplyLinkedin:
             total_pages_int = int(re.sub(r"[^\d.]", "", total_pages))
             get_last_page = self.driver.find_element_by_xpath("//button[@aria-label='Page "+str(total_pages_int)+"']")
             get_last_page.send_keys(Keys.RETURN)
-            time.sleep(2)
+            time.sleep(5)
             last_page = self.driver.current_url
             total_jobs = int(last_page.split('start=',1)[1])
 
             # go through all available pages and job offers and apply
             for page_number in range(25,total_jobs+25,25):
                 self.driver.get(current_page+'&start='+str(page_number))
-                time.sleep(2)
+                time.sleep(5)
                 results_ext = self.driver.find_elements_by_class_name("occludable-update.artdeco-list__item--offset-4.artdeco-list__item.p0.ember-view")
                 for result_ext in results_ext:
                     hover_ext = ActionChains(self.driver).move_to_element(result_ext)
@@ -114,36 +122,113 @@ class EasyApplyLinkedin:
 
         print('You are applying to the position of: ', job_add.text)
         job_add.click()
-        time.sleep(2)
+        time.sleep(5)
         
         # click on the easy apply button, skip if already applied to the position
         try:
             in_apply = self.driver.find_element_by_xpath("//button[@data-control-name='jobdetails_topcard_inapply']")
             in_apply.click()
+            self.driver.implicitly_wait(5)
+
+        # try to bypass next and inputs
+            try:
+                try:
+                    # if next is shown
+                    try:
+                        phone_field = self.driver.find_elements_by_class_name("ember-text-field.ember-view.fb-single-line-text__input")
+                        phone_field.send_keys('17666994604')
+                    except:
+                        pass
+                    continue_job = self.driver.find_element_by_xpath("//button[@aria-label='Continue to next step']")
+                    continue_job.click()
+                    self.driver.implicitly_wait(5)
+                except:
+                    print('no next..')
+                    pass
+                try:
+                    # if another next is shown
+                    continue_job = self.driver.find_element_by_xpath("//button[@aria-label='Continue to next step']")
+                    continue_job.click()
+                    self.driver.implicitly_wait(5)
+                except:
+                    print('no 2 next..')
+                    pass
+                try:
+                    # if options to select given
+                    select = Select(self.driver.find_element_by_id('urn:li:fs_easyApplyFormElement:(urn:li:fs_normalized_jobPosting:2462810884,21613107,multipleChoice)'))
+                    # select by visible text
+                    select.select_by_visible_text('Verhandlungssicher')
+                    self.driver.implicitly_wait(5)
+                except:
+                    print('no options..')
+                    pass
+                try:
+                    # if input field are demanded
+                    input_field = self.driver.find_elements_by_class_name("ember-text-field.ember-view.fb-single-line-text__input")
+                    for f in input_field:
+                        f.clear()
+                        f.send_keys('2')
+                    self.driver.implicitly_wait(5)
+                except:
+                    print('no inputs..')
+                    pass
+                try:
+                    try:
+                        phone_field = self.driver.find_elements_by_class_name("ember-text-field.ember-view.fb-single-line-text__input")
+                        phone_field.send_keys('17666994604')
+                    except:
+                        pass
+                    continue_job = self.driver.find_element_by_xpath("//button[@aria-label='Continue to next step']")
+                    continue_job.click()
+                    self.driver.implicitly_wait(5)
+                except:
+                    print('no next..')
+                    pass
+                try:
+                    # if review job demand
+                    continue_job = self.driver.find_element_by_xpath("//button[@aria-label='Review your application']")
+                    continue_job.click()
+                    self.driver.implicitly_wait(5)
+                except:
+                    print('not reviewing..')
+                    pass
+                finally:
+                    # finally submit application
+                    try:
+                        phone_field = self.driver.find_elements_by_class_name("ember-text-field.ember-view.fb-single-line-text__input")
+                        phone_field.send_keys('17666994604')
+                    except:
+                        pass
+                    submit = self.driver.find_element_by_xpath("//button[@data-control-name='submit_unify']")
+                    submit.send_keys(Keys.RETURN)
+                    self.driver.implicitly_wait(5)
+                    try:
+                        # after submit close window
+                        closing = self.driver.find_element_by_xpath("//button[@aria-label='Dismiss']")
+                        closing.click()
+                        self.driver.implicitly_wait(5)
+                    except:
+                        print('no close popup')
+                        pass 
+            # ... if not available, discard application and go to next
+            except NoSuchElementException:
+                print('can not apply, going to next...')
+                try:
+                    discard = self.driver.find_element_by_xpath("//button[@data-test-modal-close-btn]")
+                    discard.send_keys(Keys.RETURN)
+                    time.sleep(1)
+                    discard_confirm = self.driver.find_element_by_xpath("//button[@data-test-dialog-primary-btn]")
+                    discard_confirm.send_keys(Keys.RETURN)
+                    time.sleep(1)
+                except NoSuchElementException:
+                    pass
+            time.sleep(1)
+        # if already applied
         except NoSuchElementException:
             print('You already applied to this job, go to next...')
             pass
         time.sleep(1)
 
-        # try to submit if submit application is available...
-        try:
-            submit = self.driver.find_element_by_xpath("//button[@data-control-name='submit_unify']")
-            submit.send_keys(Keys.RETURN)
-        
-        # ... if not available, discard application and go to next
-        except NoSuchElementException:
-            print('Not direct application, going to next...')
-            try:
-                discard = self.driver.find_element_by_xpath("//button[@data-test-modal-close-btn]")
-                discard.send_keys(Keys.RETURN)
-                time.sleep(1)
-                discard_confirm = self.driver.find_element_by_xpath("//button[@data-test-dialog-primary-btn]")
-                discard_confirm.send_keys(Keys.RETURN)
-                time.sleep(1)
-            except NoSuchElementException:
-                pass
-
-        time.sleep(1)
 
     def close_session(self):
         """This function closes the actual session"""
@@ -153,16 +238,14 @@ class EasyApplyLinkedin:
 
     def apply(self):
         """Apply to job offers"""
-
-        self.driver.maximize_window()
         self.login_linkedin()
         time.sleep(5)
         self.job_search()
         time.sleep(5)
         self.filter()
-        time.sleep(2)
+        time.sleep(5)
         self.find_offers()
-        time.sleep(2)
+        time.sleep(5)
         self.close_session()
 
 
