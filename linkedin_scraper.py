@@ -42,17 +42,17 @@ def login():
     speicher.click()
     time.sleep(5)
 
-def search_filter():
+def search_filter(i, j):
     jobs_link = driver.find_element_by_link_text('Jobs')
     jobs_link.click()
     time.sleep(5)
     # search based on keywords and location and hit enter
     search_keywords = driver.find_element_by_xpath('//*[@class="jobs-search-box__text-input jobs-search-box__keyboard-text-input"]')
     #search_keywords.clear()
-    search_keywords.send_keys(keywords)
+    search_keywords.send_keys(keywords[i])
     search_location = driver.find_element_by_xpath('//*[@class="jobs-search-box__text-input"]')
     #search_location.clear()
-    search_location.send_keys(location)
+    search_location.send_keys(location[j])
     search_location.send_keys(Keys.RETURN)
     time.sleep(2)
     easy_apply_button = driver.find_element_by_xpath("//button[@aria-label='Easy Apply filter.']")
@@ -76,14 +76,14 @@ def submit_apply(job_add):
         print('You already applied to this job, go to next...')
         applied = True
         pass
-    driver.implicitly_wait(1)
+    driver.implicitly_wait(3)
     # try to submit if submit application is available...
     try:
         try:
             # if next is shown
             continue_job = driver.find_element_by_xpath("//button[@aria-label='Continue to next step']")
             continue_job.click()
-            driver.implicitly_wait(1)
+            driver.implicitly_wait(3)
         except:
             print('no next..')
             pass
@@ -91,7 +91,7 @@ def submit_apply(job_add):
             # if another next is shown
             continue_job = driver.find_element_by_xpath("//button[@aria-label='Continue to next step']")
             continue_job.click()
-            driver.implicitly_wait(1)
+            driver.implicitly_wait(3)
         except:
             print('no 2 next..')
             pass
@@ -100,7 +100,7 @@ def submit_apply(job_add):
             select = Select(driver.find_element_by_id('urn:li:fs_easyApplyFormElement:(urn:li:fs_normalized_jobPosting:2462810884,21613107,multipleChoice)'))
             # select by visible text
             select.select_by_visible_text('Verhandlungssicher')
-            driver.implicitly_wait(1)
+            driver.implicitly_wait(3)
         except:
             print('no options..')
             pass
@@ -110,7 +110,7 @@ def submit_apply(job_add):
             for f in input_field:
                 f.clear()
                 f.send_keys('2')
-            driver.implicitly_wait(1)
+            driver.implicitly_wait(3)
         except:
             print('no inputs..')
             pass
@@ -118,7 +118,7 @@ def submit_apply(job_add):
             # if review job demand
             continue_job = driver.find_element_by_xpath("//button[@aria-label='Review your application']")
             continue_job.click()
-            driver.implicitly_wait(1)
+            driver.implicitly_wait(3)
         except:
             print('not reviewing..')
             pass
@@ -126,12 +126,12 @@ def submit_apply(job_add):
             # finally submit application
             submit = driver.find_element_by_xpath("//button[@data-control-name='submit_unify']")
             submit.send_keys(Keys.RETURN)
-            driver.implicitly_wait(1)
+            driver.implicitly_wait(3)
             try:
                 # after submit close window
                 closing = driver.find_element_by_xpath("//button[@aria-label='Dismiss']")
                 closing.click()
-                driver.implicitly_wait(1)
+                driver.implicitly_wait(3)
             except:
                 print('no close popup')
                 pass  
@@ -142,37 +142,37 @@ def submit_apply(job_add):
         try:
             discard = driver.find_element_by_xpath("//button[@data-test-modal-close-btn]")
             discard.send_keys(Keys.RETURN)
-            driver.implicitly_wait(1)
+            driver.implicitly_wait(3)
             discard_confirm = driver.find_element_by_xpath("//button[@data-test-dialog-primary-btn]")
             discard_confirm.send_keys(Keys.RETURN)
-            driver.implicitly_wait(1)
+            driver.implicitly_wait(3)
         except NoSuchElementException:
             pass
             return applied
 
-def find_results():
-    url = driver.current_url
-    results = driver.find_elements_by_class_name("jobs-search-results__list-item.occludable-update.p0.relative.ember-view")
-    for result in results:
-            try:
-                hover = ActionChains(driver).move_to_element(result)
-                hover.perform()
-                driver.implicitly_wait(1)
-                titles = result.find_elements_by_class_name('full-width.artdeco-entity-lockup__title.ember-view')
-                titles.append()
-            except:
-                pass
-    return titles
 
 if __name__ == '__main__':
-    login()
-    search_filter()
-    count_results()
-    titles = find_results()
-    for title in titles:
-        try:
-            submit_apply(title)
-            driver.implicitly_wait(1)
 
-        except:
-            pass
+    for j in range(len(location)):
+        for i in range(len(keywords)):
+            login()
+            search_filter(i, j)
+            count_results()
+            url = driver.current_url
+            results = driver.find_elements_by_class_name("jobs-search-results__list-item.occludable-update.p0.relative.ember-view")
+            for result in results:
+                try:
+                    hover = ActionChains(driver).move_to_element(result)
+                    hover.perform()
+                    titles = result.find_elements_by_class_name('full-width.artdeco-entity-lockup__title.ember-view')
+                    driver.implicitly_wait(3)
+                    for title in titles:
+                        try:
+                            submit_apply(title)
+                            driver.implicitly_wait(3)
+                        except:
+                            print('skipping')
+                            continue
+                except:
+                    print('no results')
+                    pass
