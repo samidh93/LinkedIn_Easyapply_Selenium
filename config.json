@@ -1,7 +1,7 @@
 {
-    "email" : "sami.dhiab.x@gmail.com",
-    "password" : "azerty123*",
+    "email" : "your email",
+    "password" : "your password",
     "keywords" : ["deep learning", "machine learning", "robotik", "robotics", "mechatronik", "mechatronics", "Entwicklung", "development", "automotiv", "Fahrzeugtechnik", "elektrotechnik", "programmierung"],
     "location" : ["Berlin", "deutschland"],
-    "driver_path" : "C:/Users/Sami/chromedriver.exe"
+    "driver_path" : "C:/Users/user/chromedriver.exe"
 }
